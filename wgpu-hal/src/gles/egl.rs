@@ -135,13 +135,14 @@ fn choose_config(
         }
         // Duplicate EGL attribute keys are undefined and make Mesa return no configs.
         attributes.extend_from_slice(&[khronos_egl::SURFACE_TYPE, surface_type]);
-        // make sure the Alpha is enough to support sRGB
-        match srgb_kind {
-            SrgbFrameBufferKind::None => {}
-            _ => {
-                attributes.push(khronos_egl::ALPHA_SIZE);
-                attributes.push(8);
-            }
+        // Android uses the selected config's native visual for ANativeWindow buffers. Require
+        // alpha for presentation configs so transparent windows keep an alpha-capable format
+        // even when no EGL sRGB surface path is available.
+        if (cfg!(target_os = "android") && tier_max == 1)
+            || !matches!(srgb_kind, SrgbFrameBufferKind::None)
+        {
+            attributes.push(khronos_egl::ALPHA_SIZE);
+            attributes.push(8);
         }
         attributes.push(khronos_egl::NONE);
 
